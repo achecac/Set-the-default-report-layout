@@ -13,13 +13,19 @@ tableextension 50111 SalesHeaderExt extends "Sales Header"
                 ReportLayoutList.Reset();
                 ReportLayoutList.SetRange("Report ID", 1305);
                 if Page.RunModal(Page::"Report Layouts", ReportLayoutList) = Action::LookupOK then begin
-                    SetDefaultReportLayoutSelection(ReportLayoutList);
+                    rec.ReportLayoutListRecordID := ReportLayoutList.RecordID;
                     Rec."Report Name" := ReportLayoutList.Caption;
                     Rec.Modify(true);
                 end;
             end;
         }
     }
+        field(50159; ReportLayoutListRecordID; RecordId)
+        {
+            DataClassification = ToBeClassified;
+            Caption = 'Report Layout List RecordId';
+            Editable = false;
+        }
 
     var
         TenantReportLayoutSelection: Record "Tenant Report Layout Selection";
@@ -43,7 +49,8 @@ tableextension 50111 SalesHeaderExt extends "Sales Header"
             ReportLayoutSelection.Type := GetReportLayoutSelectionCorrespondingEnum(SelectedReportLayoutList);
             ReportLayoutSelection.Insert(true);
         end;
-        Message(DefaultLayoutSetTxt, SelectedReportLayoutList."Caption", SelectedReportLayoutList."Report Name");
+        // Too intrusive ;-)
+        //Message(DefaultLayoutSetTxt, SelectedReportLayoutList."Caption", SelectedReportLayoutList."Report Name");
     end;
 
     local procedure AddLayoutSelection(SelectedReportLayoutList: Record "Report Layout List"; UserId: Guid): Boolean
@@ -85,5 +92,19 @@ pageextension 50112 SalesOrderExt extends "Sales Order"
                 ToolTip = 'Report Name';
             }
         }
+        modify("Print Confirmation")
+                {
+                    trigger OnBeforeAction()
+                    var
+                        ReportLayoutList: Record "Report Layout List";
+                    begin
+                        if format(rec.ReportLayoutListRecordID) <> '' then begin
+                            ReportLayoutList.Get(rec.ReportLayoutListRecordID);
+                            rec.SetDefaultReportLayoutSelection(ReportLayoutList);
+                            Commit(); //Sorry but report will be open un modal so I would get an error in case I do not commit
+                        end;
+                    end;
+                }
+
     }
 }
